@@ -1,5 +1,202 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BaitCon Ice Cream Flavor Database</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+        table.dataTable {
+            background-color: white;
+            border-radius: 8px;
+        }
+        table.dataTable thead th {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px;
+        }
+        table.dataTable tbody td {
+            padding: 10px;
+        }
+        .votes {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .vote-badge {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .awesome { background-color: #4CAF50; color: white; }
+        .skeptical { background-color: #FF9800; color: white; }
+        .cantbelieve { background-color: #F44336; color: white; }
+        .comments-list {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .comments-list li {
+            margin: 5px 0;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
 <body>
-In Progress
+    <h1>BaitCon Ice Cream Flavor Database</h1>
+    <div class="subtitle">A comprehensive archive of ice cream flavors from 2017-2026</div>
+
+    <div id="stats" class="stats"></div>
+    <div id="loading" class="loading">Loading flavor data...</div>
+    <table id="flavorsTable" style="display:none; width:100%;">
+        <thead>
+            <tr>
+                <th>Flavor</th>
+                <th>Creator</th>
+                <th>Year</th>
+                <th>Day</th>
+                <th>Table</th>
+                <th>Awesome</th>
+                <th>Skeptical</th>
+                <th>Can't Believe</th>
+                <th>Comments</th>
+            </tr>
+        </thead>
+        <tbody id="flavorsBody">
+        </tbody>
+    </table>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script>
+        let allFlavors = [];
+
+        async function loadAllData() {
+            try {
+                const response = await fetch('flavors.json');
+                allFlavors = await response.json();
+                displayStats();
+                displayTable();
+            } catch (error) {
+                document.getElementById('loading').textContent = 'Error loading flavor data. Please try again later.';
+                console.error('Failed to load flavors:', error);
+            }
+        }
+
+        function displayStats() {
+            const totalFlavors = allFlavors.length;
+            const uniqueCreators = new Set(allFlavors.map(f => f.who).filter(w => w)).size;
+            const totalAwesome = allFlavors.reduce((sum, f) => sum + (f.awesome || 0), 0);
+            const avgAwesome = (totalAwesome / allFlavors.length).toFixed(1);
+
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${totalFlavors}</div>
+                    <div class="stat-label">Total Flavors</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${uniqueCreators}</div>
+                    <div class="stat-label">Unique Creators</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${totalAwesome}</div>
+                    <div class="stat-label">Total Awesome Votes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${avgAwesome}</div>
+                    <div class="stat-label">Avg Awesome per Flavor</div>
+                </div>
+            `;
+        }
+
+        function displayTable() {
+            const tbody = document.getElementById('flavorsBody');
+            tbody.innerHTML = '';
+
+            allFlavors.forEach(flavor => {
+                const row = document.createElement('tr');
+
+                const awesome = flavor.awesome || 0;
+                const skeptical = flavor.skeptical || 0;
+                const cantbelieve = flavor.cantbelieve || 0;
+
+                const comments = Array.isArray(flavor.comments)
+                    ? flavor.comments.filter(c => c).map(c => `<li>${c}</li>`).join('')
+                    : '';
+                const commentsList = comments ? `<ul class="comments-list">${comments}</ul>` : '';
+
+                row.innerHTML = `
+                    <td><strong>${flavor.flavor || ''}</strong></td>
+                    <td>${flavor.who || ''}</td>
+                    <td>${flavor.year || ''}</td>
+                    <td>${flavor.day || ''}</td>
+                    <td>${flavor.table || ''}</td>
+                    <td>${awesome}</td>
+                    <td>${skeptical}</td>
+                    <td>${cantbelieve}</td>
+                    <td>${commentsList}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('flavorsTable').style.display = 'table';
+
+            $('#flavorsTable').DataTable({
+                pageLength: 50,
+                order: [[5, 'desc']], // Sort by Awesome votes by default
+                columnDefs: [
+                    { orderable: false, targets: 8 } // Disable sorting on comments column
+                ]
+            });
+        }
+
+        loadAllData();
+    </script>
 </body>
 </html>
